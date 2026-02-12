@@ -1,1 +1,9 @@
 node_modules/
+vendor/
+.env
+build/
+cache/
+venv/
+.vs/
+bin/
+obj/
