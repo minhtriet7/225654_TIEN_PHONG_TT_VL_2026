@@ -7,3 +7,8 @@ venv/
 .vs/
 bin/
 obj/
+# Chan cac thu vien sieu nang
+node_modules/
+vendor/
+.dart_tool/
+build/
