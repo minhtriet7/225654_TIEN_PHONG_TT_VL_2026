@@ -1,20 +1,19 @@
 """
 Module Bảo mật (Security Module).
-Đảm nhiệm (Single Responsibility): Mã hóa mật khẩu, tạo token JWT và xác thực người dùng.
+Đảm nhiệm (Single Responsibility): Mã hóa mật khẩu, tạo token JWT, xác thực người dùng 
+và kiểm tra API Key bảo vệ hệ thống.
 """
 
 from datetime import datetime, timedelta
 from typing import Optional
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from fastapi import Depends, HTTPException, status, Security
+from fastapi.security import OAuth2PasswordBearer, APIKeyHeader
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from app.config import settings
 
-# Cấu hình CryptContext để mã hóa mật khẩu (sử dụng thuật toán bcrypt)
+# --- 1. CẤU HÌNH BẢO MẬT MẬT KHẨU & JWT ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-# Khai báo schema OAuth2 để lấy token từ Header (Bearer Token)
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 class SecurityHelper:
@@ -35,10 +34,7 @@ class SecurityHelper:
 
     @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-        """
-        Tạo JWT Access Token dựa trên Payload.
-        Thời gian hết hạn mặc định nếu không truyền vào là 30 phút.
-        """
+        """Tạo JWT Access Token dựa trên Payload."""
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
@@ -47,7 +43,6 @@ class SecurityHelper:
         
         to_encode.update({"exp": expire})
         
-        # Tạo token bằng chuỗi SECRET_KEY lấy từ biến môi trường
         encoded_jwt = jwt.encode(
             to_encode, 
             settings.SECRET_KEY, 
@@ -55,12 +50,9 @@ class SecurityHelper:
         )
         return encoded_jwt
 
-# Hàm Dependency dùng để gắn vào các API cần bảo vệ
+# --- 2. DEPENDENCIES DÀNH CHO USER (JWT) ---
 def get_current_user(token: str = Depends(oauth2_scheme)):
-    """
-    Giải mã JWT Token để lấy thông tin người dùng.
-    Có xử lý lỗi (Exception Handling) đẩy về mã 401 nếu token sai hoặc hết hạn.
-    """
+    """Giải mã JWT Token để lấy thông tin người dùng."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Không thể xác thực thông tin (Token không hợp lệ)",
@@ -73,9 +65,6 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         if email is None:
             raise credentials_exception
             
-        # Lưu ý: Theo file SECURITY_GUIDE.md, ở bước này bạn cần gọi DB 
-        # để kiểm tra lại user có tồn tại không. 
-        # Chúng ta sẽ trả về dict tạm thời, khi làm xong DB sẽ nối vào sau.
         token_data = {
             "id": payload.get("id"),
             "email": email,
@@ -87,12 +76,28 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         raise credentials_exception
 
 def get_current_admin(current_user: dict = Depends(get_current_user)):
-    """
-    Dependency Phân quyền (RBAC): Chỉ cho phép Admin truy cập.
-    """
+    """Dependency Phân quyền (RBAC): Chỉ cho phép Admin truy cập."""
     if not current_user.get("is_admin"):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN, 
             detail="Bạn không có quyền truy cập chức năng này (Admin Access Required)"
         )
     return current_user
+
+
+# --- 3. DEPENDENCIES DÀNH CHO HỆ THỐNG (API KEY) ---
+# Khai báo tên Header chứa API Key (Thường dùng X-API-Key)
+API_KEY_NAME = "X-API-Key"
+api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
+
+def verify_api_key(api_key: str = Security(api_key_header)):
+    """
+    Dependency kiểm tra API Key để bảo vệ các Endpoint hệ thống (như file_upload).
+    Khớp với biến API_KEY trong file .env và config.py
+    """
+    if api_key == settings.API_KEY:
+        return api_key
+    raise HTTPException(
+        status_code=status.HTTP_403_FORBIDDEN, 
+        detail="Từ chối truy cập: API Key không hợp lệ hoặc bị thiếu trong Header"
+    )

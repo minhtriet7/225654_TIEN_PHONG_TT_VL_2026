@@ -5,7 +5,11 @@ from app.routers import payment
 from app.routers import file_upload
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-
+from app.routers import gpt_checker
+from app.routers import chatbot
+from app.routers import admin
+from app.routers import auth
+from fastapi.responses import RedirectResponse
 # Prefix API theo version
 api_prefix = f"/api/{settings.VERSION_APP}"
 
@@ -33,6 +37,15 @@ app.add_middleware(
 app.include_router(file_upload.router, prefix=api_prefix)
 
 app.include_router(payment.router)
+app.include_router(gpt_checker.router)
+app.include_router(chatbot.router)
+app.include_router(auth.router, prefix=api_prefix)
+app.include_router(admin.router, prefix=api_prefix)
+
 @app.get(f"{api_prefix}/")
 def read_root():
     return {"message": f"Welcome to {settings.TITLE_APP}"}
+# Tự động chuyển hướng trang chủ (/) vào thẳng trang Swagger UI (/docs)
+@app.get("/")
+def redirect_to_docs():
+    return RedirectResponse(url=f"{api_prefix}/docs")

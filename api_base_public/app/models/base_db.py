@@ -47,12 +47,6 @@ class BaseDB:
         """
         Hệ thống tính phí Token (Billing Process).
         Cập nhật số dư của người dùng và ghi nhận log lịch sử giao dịch.
-        
-        Args:
-            user_id: ID của người dùng.
-            amount: Số lượng token biến động (hỗ trợ số thực float).
-            description: Mô tả lý do (VD: 'Nạp qua SePay' hoặc 'Chat GPT-4').
-            tx_type: Loại giao dịch ('in' = Nạp tiền, 'out' = Trừ tiền).
         """
         if tx_type not in ['in', 'out']:
             raise ValueError("Lỗi hệ thống: tx_type chỉ được nhận giá trị 'in' hoặc 'out'")
@@ -80,4 +74,38 @@ class BaseDB:
                 return True
         except sqlite3.Error as e:
             print(f"Lỗi thao tác DB (change_token_balance): {e}")
+            return False
+
+
+class UserDB(BaseDB):
+    """
+    Class xử lý riêng cho bảng users.
+    Kế thừa kết nối an toàn từ BaseDB.
+    """
+    def get_all(self):
+        """Lấy danh sách tất cả người dùng."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                cursor.execute("SELECT * FROM users")
+                # Chuyển đổi sqlite3.Row thành dictionary để auth.py dễ xử lý
+                return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.Error as e:
+            print(f"Lỗi truy vấn: {e}")
+            return []
+
+    def add(self, username, hashed_password, email):
+        """Thêm người dùng mới vào hệ thống."""
+        try:
+            with self.get_connection() as conn:
+                cursor = conn.cursor()
+                # Cấp mặc định 100 token cho user mới đăng ký để trải nghiệm
+                cursor.execute(
+                    "INSERT INTO users (username, password, email, token_balance) VALUES (?, ?, ?, ?)",
+                    (username, hashed_password, email, 100.0)
+                )
+                conn.commit()
+                return True
+        except sqlite3.Error as e:
+            print(f"Lỗi thêm user: {e}")
             return False
