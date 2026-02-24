@@ -67,9 +67,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
             
         token_data = {
             "id": payload.get("id"),
+            "username": payload.get("username"),  
             "email": email,
             "is_admin": payload.get("is_admin", False)
         }
+        return token_data
         return token_data
         
     except JWTError:

@@ -39,7 +39,7 @@ def register(username: str = Form(...), password: str = Form(...), email: str = 
 
     hashed_pw = get_password_hash(password)
     user_db.add(username, hashed_pw, email)
-    user_db.close()
+    # user_db.close()
     return {"message": "✅ Đăng ký thành công!"}
 
 
