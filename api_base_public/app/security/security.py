@@ -14,7 +14,7 @@ from app.config import settings
 
 # --- 1. CẤU HÌNH BẢO MẬT MẬT KHẨU & JWT ---
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/1.0.0/auth/login")
 
 class SecurityHelper:
     """

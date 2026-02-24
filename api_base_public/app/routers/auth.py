@@ -47,7 +47,7 @@ def register(username: str = Form(...), password: str = Form(...), email: str = 
 def login(username: str = Form(...), password: str = Form(...)):
     user_db = UserDB()
     users = user_db.get_all()
-    user_db.close()
+    
 
     user = next((u for u in users if u["username"] == username), None)
     if not user:
